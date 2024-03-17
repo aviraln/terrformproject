@@ -1,0 +1,4 @@
+variable "vpcid" {
+    type = string
+  
+}
