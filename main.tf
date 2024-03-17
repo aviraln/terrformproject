@@ -125,7 +125,7 @@ module "naclasso1" {
 module "naclasso2" {
   source = "./modules/naclassociation"
   naclid = module.my_nacl.naclid
-  subid = module.Subnet2.subid
+  subid  = module.Subnet2.subid
 }
 
 module "naclasso3" {
@@ -140,3 +140,111 @@ module "naclasso4" {
   subid  = module.Subnet4.subid
 }
 
+module "sg1" {
+  source = "./modules/securitygroup"
+  name   = "sg1"
+  vpcid  = module.vpc.vpcid
+  ports  = [22, 80]
+}
+
+module "albsg" {
+  source = "./modules/securitygroup"
+  name   = "albsg"
+  vpcid  = module.vpc.vpcid
+  ports  = [80, 443, 8080]
+}
+
+module "ec2zoneA_1" {
+  source   = "./modules/ec2"
+  amiid    = "ami-03bb6d83c60fc5f7c"
+  instype  = "t2.micro"
+  keyname  = "AmazonKey"
+  subid    = module.Subnet3.subid
+  sg       = module.sg1.sgid
+  pubipass = "false"
+  name     = "ec2zoneA"
+}
+
+module "ec2zoneA_2" {
+  source   = "./modules/ec2"
+  amiid    = "ami-03bb6d83c60fc5f7c"
+  instype  = "t2.micro"
+  keyname  = "AmazonKey"
+  subid    = module.Subnet3.subid
+  sg       = module.sg1.sgid
+  pubipass = "false"
+  name     = "ec2zoneA"
+}
+module "ec2zoneB_1" {
+  source   = "./modules/ec2"
+  amiid    = "ami-03bb6d83c60fc5f7c"
+  instype  = "t2.micro"
+  keyname  = "AmazonKey"
+  subid    = module.Subnet4.subid
+  sg       = module.sg1.sgid
+  pubipass = "false"
+  name     = "ec2zoneB"
+}
+module "ec2zoneB_2" {
+  source   = "./modules/ec2"
+  amiid    = "ami-03bb6d83c60fc5f7c"
+  instype  = "t2.micro"
+  keyname  = "AmazonKey"
+  subid    = module.Subnet4.subid
+  sg       = module.sg1.sgid
+  pubipass = "false"
+  name     = "ec2zoneB"
+}
+
+module "ec2zoneA" {
+  source   = "./modules/ec2"
+  amiid    = "ami-03bb6d83c60fc5f7c"
+  instype  = "t2.micro"
+  keyname  = "AmazonKey"
+  subid    = module.Subnet1.subid
+  sg       = module.sg1.sgid
+  pubipass = "true"
+  name     = "pub_ec2zoneA"
+}
+
+module "applicationlb" {
+  source = "./modules/loadbalancer"
+  name   = "Alb"
+  lbtype = "application"
+  sgid   = module.albsg.sgid
+  subid  = module.Subnet1.subid
+  subid1 = module.Subnet2.subid
+}
+
+module "albtg" {
+  source   = "./modules/targetgroup"
+  name     = "albtg"
+  port     = "80"
+  protocol = "HTTP"
+  tgtype   = "ip"
+  vpcid    = module.vpc.vpcid
+}
+
+module "listener" {
+  source   = "./modules/listeners"
+  lbarn    = module.applicationlb.lbarn
+  port     = "80"
+  protocol = "HTTP"
+  action   = "forward"
+  tgarn    = module.albtg.tgarn
+
+}
+module "template" {
+  source  = "./modules/template"
+  name    = "myTemplate"
+  amiid   = "ami-03bb6d83c60fc5f7c"
+  instype = "t2.micro"
+  sgid    = module.sg1.sgid
+}
+
+module "asg" {
+  source = "./modules/autoscaling"
+  id     = module.template.templateid
+  subid1 = module.Subnet3.subid
+  subid  = module.Subnet4.subid
+}
